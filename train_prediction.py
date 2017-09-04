@@ -9,7 +9,8 @@ from time import time
 from sklearn.metrics import f1_score
 from sklearn.cross_validation import train_test_split
 import pickle
-
+import os.path
+import itertools
 
 def show_data_stats(data):
     n_matches = data.shape[0]
@@ -21,12 +22,32 @@ def show_data_stats(data):
     print("Number of matches won by Radiant: " + str(n_radwins))
     print("Win rate of Radiant: " + str(win_rate) + "\n")
 
+def augment_data(data):
+    df = pd.DataFrame()
+    for i in range(data.shape[0]):
+        vals = data.values[i]
+        b1 = list(itertools.permutations(vals[:5], 5))
+        b2 = list(itertools.permutations(vals[5:10], 5))
+        if (data['rad_win'][i]) == True:
+            rad_win = tuple("T")
+        else:
+            rad_win = tuple("F")
+        tmp = pd.DataFrame([y + x + rad_win for x in b2 for y in b1], columns=data.columns)
+        df = df.append(data)
+        if i % 50 == 0 and i != 0:
+            print(str(i) + " data has been augmented")
+
+
+    return df
 
 def read_data(name):
     data = pd.read_csv(name)
     print("showing first few columns..")
     display(data.head())
     show_data_stats(data)
+    print(data.shape[0])
+    data = augment_data(data)
+    print(data.shape[0])
     return data
 
 def prepare_data(data):
@@ -100,15 +121,25 @@ def load_clf(clf):
     print(loaded_clf.__class__.__name__ + " model loaded!")
     return loaded_clf
 
+def save_file_exist(name):
+    return os.path.exists(name+".pkl")
+
 if __name__ == "__main__":
-    data = read_data("data.csv")
-    x_data, y_data, x_test, y_test = prepare_data(data)
-    print(y_data.head())
-    '''logreg = LogisticRegression(random_state=42)
-    SVC = SVC(random_state = 912, kernel='rbf')
-    train_predict(logreg, x_data, y_data, x_test, y_test)
-    train_predict(SVC, x_data, y_data, x_test, y_test)
-    save_clf(logreg)
-    save_clf(SVC)
-    #predict_outcome(SVC, x_test, y_test)
-'''
+
+    for clf in ["SVC", "LogisticRegression"]:
+        if save_file_exist(clf):
+            load_clf(clf)
+        else:
+            data = read_data("data.csv")
+            x_data, y_data, x_test, y_test = prepare_data(data)
+            print(y_data.head())
+            if clf == "SVC":
+                SVC = SVC(random_state = 912, kernel='rbf')
+                train_predict(SVC, x_data, y_data, x_test, y_test)
+                predict_outcome(SVC, x_test, y_test)
+                save_clf(SVC)
+            elif clf == "LogisticRegression":
+                logreg = LogisticRegression(random_state=42)
+                train_predict(logreg, x_data, y_data, x_test, y_test)
+                predict_outcome(logreg, x_test, y_test)
+                save_clf(logreg)
