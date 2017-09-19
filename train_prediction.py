@@ -127,16 +127,16 @@ def save_file_exist(name):
 if __name__ == "__main__":
     for clf in ["MLPClassifier"]:
         if save_file_exist(clf):
-            datalist = [("data"+str(l)+".csv") for l in range(16,28)]
-            print(datalist)
-            for filename in datalist:
-                print(filename + " loaded!")
-                clfa = load_clf(clf)
-                data = read_data("folder/"+filename)
-                x_data, y_data, x_test, y_test = prepare_data(data)
-                #train_predict(clfa, x_data, y_data, x_test, y_test)
-                predict_outcome(clfa, x_test, y_test)
-                #save_clf(clfa)
+            data1 = read_data("newdata.csv")
+            data2 = read_data("newdata1.csv")
+            frames = [data1, data2]
+            data = pd.concat(frames)
+            show_data_stats(data)
+            clfa = load_clf(clf)
+            x_data, y_data, x_test, y_test = prepare_data_new(data)
+            #train_predict(clfa, x_data, y_data, x_test, y_test)
+            predict_outcome(clfa, x_test, y_test)
+            #save_clf(clfa)
 
         else:
             data1 = read_data("newdata.csv")
@@ -144,7 +144,6 @@ if __name__ == "__main__":
             frames = [data1, data2]
             data = pd.concat(frames)
             show_data_stats(data)
-            #for i in data:
             x_data, y_data, x_test, y_test = prepare_data_new(data)
             if clf == "SVC":
                 clfa = SVC(random_state = 912, kernel='rbf')
@@ -153,6 +152,6 @@ if __name__ == "__main__":
             elif clf == "Perceptron":
                 clfa = Perceptron(random_state=42, warm_start = True)
             elif clf == "MLPClassifier":
-                clfa = MLPClassifier(solver = 'lbfgs', alpha = 1, hidden_layer_sizes=(100, 50, 10, 5), random_state=1, warm_start=True)
+                clfa = MLPClassifier(solver = 'adam', alpha = 1.2, hidden_layer_sizes=(100, 50, 25, 10), random_state=1, warm_start=True)
             train_predict(clfa, x_data, y_data, x_test, y_test)
             save_clf(clfa)
