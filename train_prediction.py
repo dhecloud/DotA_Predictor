@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import Perceptron
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 from IPython.display import display
 from sklearn.preprocessing import scale
@@ -10,7 +12,12 @@ from sklearn.metrics import f1_score
 from sklearn.cross_validation import train_test_split
 import pickle
 import os.path
+import os
 import itertools
+
+def batches(l, n):
+    for i in range(0, len(l), n):
+        yield l[i:i+n]
 
 def show_data_stats(data):
     n_matches = data.shape[0]
@@ -41,29 +48,24 @@ def augment_data(data):
     return df
 
 def read_data(name):
-    data = pd.read_csv(name)
-    print("showing first few columns..")
-    display(data.head())
-    show_data_stats(data)
-    print(data.shape[0])
-    data = augment_data(data)
-    print(data.shape[0])
-    return data
+    frames = pd.read_csv(name)
+    print(frames.shape[0])
+    return frames
+
+def prepare_data_new(data):
+    y_data = data['rad_win']
+    y_data = y_data.values
+    x_data = data.drop(['rad_win'],1)
+    x_data = x_data.values
+    x_data1, x_test, y_data1, y_test = train_test_split(x_data, y_data,
+                                                    test_size = 7000,
+                                                    random_state = 2,
+                                                    stratify = y_data)
+    return x_data1, y_data1, x_test, y_test
 
 def prepare_data(data):
-    x_data = data.drop(['rad_win'],1)
     y_data = data['rad_win']
-    # convert categorical data to continuous data
-    x_data.player1 = x_data.player1.astype('str')
-    x_data.player2 = x_data.player2.astype('str')
-    x_data.player3 = x_data.player3.astype('str')
-    x_data.player4 = x_data.player4.astype('str')
-    x_data.player5 = x_data.player5.astype('str')
-    x_data.player6 = x_data.player6.astype('str')
-    x_data.player7 = x_data.player7.astype('str')
-    x_data.player8 = x_data.player8.astype('str')
-    x_data.player9 = x_data.player9.astype('str')
-    x_data.player10 = x_data.player10.astype('str')
+    x_data = data.drop(['rad_win'],1)
 
     output = pd.DataFrame(index = x_data.index)
     for col, col_data in x_data.iteritems():
@@ -73,7 +75,7 @@ def prepare_data(data):
         output = output.join(col_data)
     print(str(len(output.columns)) + " proccessed feature columns\n")
     x_data, x_test, y_data, y_test = train_test_split(output, y_data,
-                                                    test_size = 5000,
+                                                    test_size = 3000,
                                                     random_state = 2,
                                                     stratify = y_data)
     return x_data, y_data, x_test, y_test
@@ -91,8 +93,6 @@ def predict_outcome(clf, features, target):
     start = time()
     y_pred = clf.predict(features)
     end = time()
-    print(len(y_pred))
-    print(len(y_pred==True))
     print("Predictions made in " + str(end-start) + " seconds")
     f1score = f1_score(target, y_pred, pos_label=True)
     acc = sum(target == y_pred)/float(len(y_pred))
@@ -125,21 +125,34 @@ def save_file_exist(name):
     return os.path.exists(name+".pkl")
 
 if __name__ == "__main__":
-
-    for clf in ["SVC", "LogisticRegression"]:
+    for clf in ["MLPClassifier"]:
         if save_file_exist(clf):
-            load_clf(clf)
+            datalist = [("data"+str(l)+".csv") for l in range(16,28)]
+            print(datalist)
+            for filename in datalist:
+                print(filename + " loaded!")
+                clfa = load_clf(clf)
+                data = read_data("folder/"+filename)
+                x_data, y_data, x_test, y_test = prepare_data(data)
+                #train_predict(clfa, x_data, y_data, x_test, y_test)
+                predict_outcome(clfa, x_test, y_test)
+                #save_clf(clfa)
+
         else:
-            data = read_data("data.csv")
-            x_data, y_data, x_test, y_test = prepare_data(data)
-            print(y_data.head())
+            data1 = read_data("newdata.csv")
+            data2 = read_data("newdata1.csv")
+            frames = [data1, data2]
+            data = pd.concat(frames)
+            show_data_stats(data)
+            #for i in data:
+            x_data, y_data, x_test, y_test = prepare_data_new(data)
             if clf == "SVC":
-                SVC = SVC(random_state = 912, kernel='rbf')
-                train_predict(SVC, x_data, y_data, x_test, y_test)
-                predict_outcome(SVC, x_test, y_test)
-                save_clf(SVC)
+                clfa = SVC(random_state = 912, kernel='rbf')
             elif clf == "LogisticRegression":
-                logreg = LogisticRegression(random_state=42)
-                train_predict(logreg, x_data, y_data, x_test, y_test)
-                predict_outcome(logreg, x_test, y_test)
-                save_clf(logreg)
+                clfa = LogisticRegression(random_state=42, warm_start = True)
+            elif clf == "Perceptron":
+                clfa = Perceptron(random_state=42, warm_start = True)
+            elif clf == "MLPClassifier":
+                clfa = MLPClassifier(solver = 'lbfgs', alpha = 1, hidden_layer_sizes=(100, 50, 10, 5), random_state=1, warm_start=True)
+            train_predict(clfa, x_data, y_data, x_test, y_test)
+            save_clf(clfa)
