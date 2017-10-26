@@ -58,7 +58,7 @@ def prepare_data_new(data):
     x_data = data.drop(['rad_win'],1)
     x_data = x_data.values
     x_data1, x_test, y_data1, y_test = train_test_split(x_data, y_data,
-                                                    test_size = 7000,
+                                                    test_size = 15000,
                                                     random_state = 2,
                                                     stratify = y_data)
     return x_data1, y_data1, x_test, y_test
@@ -141,7 +141,8 @@ if __name__ == "__main__":
         else:
             data1 = read_data("newdata.csv")
             data2 = read_data("newdata1.csv")
-            frames = [data1, data2]
+            data3 = read_data("newdata2.csv")
+            frames = [data1, data2, data3]
             data = pd.concat(frames)
             show_data_stats(data)
             x_data, y_data, x_test, y_test = prepare_data_new(data)

@@ -4,8 +4,8 @@ from sklearn.neural_network import MLPClassifier
 
 
 file1 = open("heroscolumns.txt", "r")
-HEROS_COLUMNS = file1.read().strip("[").strip("]").strip("'").split("', '")
-
+HEROS_COLUMNS = file1.read().strip("['").strip("']").split("', '")
+print (len(HEROS_COLUMNS))
 def predict_win(clf, features):
 
     y_pred = clf.predict(features)
@@ -33,6 +33,7 @@ def input_heroes():
             print("Invalid hero! Try again")
             tmp = "dire_" + input()
         direheroes.append(tmp)
+
     return radheroes, direheroes
 
 def create_df(rad, dire):

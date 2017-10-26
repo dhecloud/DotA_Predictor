@@ -1,26 +1,22 @@
 import pandas as pd
 import numpy as np
 
-CSV_TO_BE_TRANSFORMED1="data1.csv"
-CSV_TO_BE_TRANSFORMED="data.csv"
+CSV_TO_BE_TRANSFORMED="data2.csv"
 
 file1 = open("heroscolumns.txt", "w")
 def run():
-    data1 = pd.read_csv(CSV_TO_BE_TRANSFORMED1)
-    data2 = pd.read_csv(CSV_TO_BE_TRANSFORMED)
-    frames = [data1, data2]
-    data = pd.concat(frames)
+    data = pd.read_csv(CSV_TO_BE_TRANSFORMED)
     rows = data.shape[0]
     print(rows)
     radcols = ["player1", "player2", "player3", "player4", "player5"]
     direcols = ["player6","player7", "player8","player9", "player10"]
     heroes = set(list(data.player1.unique())+list(data.player2.unique()) +list(data.player3.unique()) + list(data.player4.unique()) + list(data.player5.unique()) )
-    print(len(heroes))
-    col = []
+    print("Number of Heroes: "+ str(len(heroes)))
+    col = ["rad_win"]
     for name in heroes:
         col.append("rad_"+name)
         col.append("dire_"+name)
-    print(len(col))
+
     file1.write(str(col))
     newcsv = []
     for i in range(rows):
@@ -37,7 +33,7 @@ def run():
         newcsv.append(tmpdict)
 
     newdf = pd.DataFrame(newcsv, columns=col)
-    #newdf.to_csv("new"+CSV_TO_BE_TRANSFORMED,index=False, encoding='utf-8')
+    newdf.to_csv("new"+CSV_TO_BE_TRANSFORMED,index=False, encoding='utf-8')
 
 
 
