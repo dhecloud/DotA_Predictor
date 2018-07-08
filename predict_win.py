@@ -6,6 +6,7 @@ from sklearn.neural_network import MLPClassifier
 file1 = open("heroscolumns.txt", "r")
 HEROS_COLUMNS = file1.read().strip("['").strip("']").split("', '")
 print (len(HEROS_COLUMNS))
+
 def predict_win(clf, features):
 
     y_pred = clf.predict(features)
