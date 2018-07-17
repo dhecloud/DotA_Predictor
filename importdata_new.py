@@ -68,7 +68,8 @@ def add_features(heroes_stats_combined):
     
     return heroes_stats_combined
 
-try:
+
+def get_matches():
     api_instance = od_python.PublicMatchesApi()
     mmr_ascending = 56 # int | Order by MMR ascending (optional)
     mmr_descending = 56 # int | Order by MMR descending (optional)
@@ -88,6 +89,35 @@ try:
             f.write(str(matches))
         f.close()
         time.sleep(20)
+        
+try:
+    api_instance = od_python.MatchesApi()
+    with open("matches/matches.txt","r") as f:
+        matches = eval(f.readline())
+    matches_all_pick = []
+    abandon = False
+    for match in matches:
+        api_response = api_instance.matches_match_id_get(match['match_id'])
+        if (api_response.game_mode == 1):
+            for i in range(10):
+                if (api_response.players[i].abandons == 0):
+                    abandon = True
+            if not abandon:  
+                match["throw"] = api_response.throw
+                match["loss"] = api_response.loss
+                match['patch'] = api_response.patch
+                match['region'] = api_response.region
+                match['skill'] = api_response.skill
+                match['leaver_status'] = api_response.patch
+                match['patch'] = api_response.patch
+        matches_all_pick.append(matches)
+        time.sleep(1.5)
+    with open("matches/matches_ap.txt","w") as f:
+        f.write(str(matches))
+        
+    # api_response = api_instance.matches_match_id_get(3997196903)
+    # print(api_response)
+    
         
         
 
