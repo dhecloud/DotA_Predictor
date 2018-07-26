@@ -4,6 +4,7 @@ from od_python.rest import ApiException
 # create an instance of the API class
 hero_id = 'hero_id_example' # str | Hero ID
 
+
 def get_heroes_stats(write=False):
     stats_api = od_python.HeroStatsApi()
     herostats=[]
@@ -79,45 +80,87 @@ def get_matches():
         with open("matches/matches.txt","r") as f:
             matches = eval(f.readline())
         f.close()
+        print("Number of matches: " + str(len(matches)))
         api_response = api_instance.public_matches_get()
         
         for i in range(len(api_response)):
             matches.append({"match_id":api_response[i].match_id, "match_seq_num":api_response[i].match_seq_num, "radiant_win":api_response[i].radiant_win, "start_time":api_response[i].start_time, "duration":api_response[i].duration, "radiant_team":api_response[i].radiant_team, "dire_team":api_response[i].dire_team})
-        matches = [dict(tupleized) for tupleized in set(tuple(item.items()) for item in matches)]
-        print(len(matches))
+        dup = []
+        for i in range(len(matches)):
+            for j in range(i+1,len(matches)):
+                if int(matches[i]['match_id']) == int(matches[j]['match_id']):
+                    dup.append(j)
+        dup = sorted(list(set(dup)),reverse=True)
+        for i in dup:
+            matches.pop(i)
+        print("Number of unique matches: " + str(len(matches)))
         with open("matches/matches.txt","w") as f:
             f.write(str(matches))
-        f.close()
-        time.sleep(20)
-        
-try:
+        time.sleep(200)
+
+def get_ap_matches():
     api_instance = od_python.MatchesApi()
     with open("matches/matches.txt","r") as f:
         matches = eval(f.readline())
-    matches_all_pick = []
-    abandon = False
+    with open("matches/matches_ap.txt","r") as f:
+             matches_all_pick = eval(f.readline())
+    if len(matches_all_pick) > 0:
+        last_id_collected = matches_all_pick[-1]['match_id']
+    else:
+        last_id_collected = None
     for match in matches:
+        if last_id_collected != None:
+            if match['match_id'] > last_id_collected:
+                continue
+        abandon = False
         api_response = api_instance.matches_match_id_get(match['match_id'])
-        if (api_response.game_mode == 1):
+        # print((type(api_response.game_mode)))
+        # print((api_response.game_mode))
+        if (api_response.game_mode == 1 or 22):
+            # print("allpick!")
             for i in range(10):
-                if (api_response.players[i].abandons == 0):
+                if (api_response.players[i].abandons > 0):
                     abandon = True
+                    # print("someone abandoned")
+            
             if not abandon:  
                 match["throw"] = api_response.throw
                 match["loss"] = api_response.loss
                 match['patch'] = api_response.patch
                 match['region'] = api_response.region
                 match['skill'] = api_response.skill
-                match['leaver_status'] = api_response.patch
-                match['patch'] = api_response.patch
-        matches_all_pick.append(matches)
+                # print(match['throw'])
+                # print(type(match['throw']))
+                # print(match['loss'])
+                # print(type(match['loss']))
+                matches_all_pick.append(match)
+                with open("matches/matches_ap.txt","w") as f:
+                    f.write(str(matches_all_pick))
         time.sleep(1.5)
     with open("matches/matches_ap.txt","w") as f:
         f.write(str(matches))
-        
-    # api_response = api_instance.matches_match_id_get(3997196903)
-    # print(api_response)
+
+def input_heroes_complexity():
+    new_stats = []
+    with open("hero_data/heroes_stats_combined.txt","r") as f:
+        heroes = eval(f.readline())
+    for hero in heroes:
+        print(hero['localized_name'])
+        complexity = input()
+        hero['complexity'] = int(complexity)
+        new_stats.append(hero)
+        print(hero)
+    with open("hero_data/heroes_stats_combined.txt","w") as f:
+        f.write(str(new_stats))
     
+def create_gold_dependence_feature():
+    
+    pass
+        
+        
+    
+try:
+    get_ap_matches()
         
         
 
