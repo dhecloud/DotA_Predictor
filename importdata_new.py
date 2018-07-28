@@ -1,8 +1,18 @@
+def warn(*args, **kwargs):
+    pass
+import warnings
+warnings.warn = warn
+
+import pickle
 import time
 import od_python
+import pandas as pd
 from od_python.rest import ApiException
-# create an instance of the API class
-hero_id = 'hero_id_example' # str | Hero ID
+from sklearn.neural_network import MLPClassifier
+from sklearn.metrics import f1_score
+from sklearn.cross_validation import train_test_split
+from xgboost import XGBClassifier
+
 
 
 def get_heroes_stats(write=False):
@@ -102,9 +112,11 @@ def get_matches():
         print("Number of unique matches: " + str(len(matches)))
         with open("matches/matches.txt","w") as f:
             f.write(str(matches))
-        time.sleep(400)
+        time.sleep(2)
         get_ap_matches()
-        time.sleep(400)
+        create_one_hot_hero_features()
+        print("sleeping...")
+        time.sleep(800)
 
 def get_ap_matches():
     api_instance = od_python.MatchesApi()
@@ -133,6 +145,23 @@ def get_ap_matches():
                 match['patch'] = api_response.patch
                 match['region'] = api_response.region
                 match['skill'] = api_response.skill
+                t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td = create_features(list(map(int, match['radiant_team'].split(',') + match['dire_team'].split(','))))
+                match['t1gpm'] = t1gpm
+                match['t1xpm'] = t1xpm
+                match['t1kpm'] = t1kpm
+                match['t1lhpm'] = t1lhpm
+                match['t1hdpm'] = t1hdpm
+                match['t1hhpm'] = t1hhpm
+                match['t1td'] = t1td
+                
+                match['t2gpm'] = t2gpm
+                match['t2xpm'] = t2xpm
+                match['t2kpm'] = t2kpm
+                match['t2lhpm'] = t2lhpm
+                match['t2hdpm'] = t2hdpm
+                match['t2hhpm'] = t2hhpm
+                match['t2td'] = t2td
+                
                 # print(match['throw'])
                 # print(type(match['throw']))
                 # print(match['loss'])
@@ -251,11 +280,154 @@ def create_features(heroes):
     t2td = (p6['td']+p7['td']+p8['td']+p9['td']+p10['td'])/(5*td)
     t2_stats = [t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td]
     
-    return t1_stats, t2_stats
+    return t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td
 
+def save_csv():
+    with open("matches/matches_ap.txt","r") as f:
+        matches = eval(f.readline())
+        
+    matches = pd.DataFrame.from_dict(matches)
+    matches.to_csv("matches/matches.csv")
+
+def prepare_data(data):
+    y_data = data['radiant_win']
+    y_data = y_data.values
+    x_data = data.drop(['duration', 'loss', 'match_id', 'match_seq_num', 'patch','radiant_win','region','skill','start_time','throw','radiant_team','dire_team'],1)
+    x_data = (x_data-x_data.mean())/x_data.std()
+    assert(not x_data.isnull().values.any())
+    x_data = x_data.values
+    x_data, x_test, y_data, y_test = train_test_split(x_data, y_data,
+                                                    test_size = 500,
+                                                    random_state = 2,
+                                                    stratify = y_data)
+    return x_data, y_data, x_test, y_test
+    
+def train_predict(clf, x_data, y_data, x_test, y_test):
+
+    print("\nTraining a " + clf.__class__.__name__ + "...")
+
+    train_classifier(clf, x_data, y_data)
+    #train
+    print("=== Train ===")
+    f1, acc = predict_outcome(clf, x_data, y_data)
+    #test
+    print("=== Test ===")
+    f1, acc = predict_outcome(clf, x_test, y_test)
+    
+def train_classifier(clf, x_data, y_data):
+
+    start = time.time()
+    clf.fit(x_data, y_data)
+    end = time.time()
+
+    print("Trained model in " + str(end-start) + " seconds")
+
+def predict_outcome(clf, features, target):
+
+    start = time.time()
+    y_pred = clf.predict(features)
+    end = time.time()
+    print("Predictions made in " + str(end-start) + " seconds")
+    f1score = f1_score(target, y_pred, pos_label=True)
+    acc = sum(target == y_pred)/float(len(y_pred))
+    print("F1 score and accuracy score: " + str(f1score) + ", " + str(acc))
+    
+    return f1score, acc
+
+def save_clf(clf):
+    with open( clf.__class__.__name__ + '.pkl', 'wb') as fid:
+        pickle.dump(clf, fid)
+    print(clf.__class__.__name__ + " model saved!")
+
+def create_one_hot_hero_features():
+    with open("matches/matches_ap.txt","r") as f:
+        matches = eval(f.readline())
+    with open("hero_data/heroes.txt","r") as f:
+        heroes = eval(f.readline())
+    hero_ids = [x['id'] for x in heroes]
+    col = []
+    for name in hero_ids:
+        col.append("rad_"+str(name))
+        col.append("dire_"+str(name))
+    length = len(col)
+    for match in matches:
+        original_length = len(match.keys())
+        heroes = list(map(int, match['radiant_team'].split(',') + match['dire_team'].split(',')))
+        for name in col:
+            match[name] = 0
+        for i in range(5):
+            match["rad_"+str(heroes[i])] = 1
+        for i in range(5,10):
+            match["dire_"+str(heroes[i])] = 1
+        assert(len(match) == original_length + length)
+    
+    matches = pd.DataFrame.from_dict(matches)
+    matches.to_csv("matches/matches.csv")
+    
+    
+def xgb():
+    params = {
+    'eta': 0.02, 
+    'max_depth': 7,
+    'objective': 'binary:logistic',
+    'eval_metric': 'logloss',
+    'seed': 100,
+    'silent': True
+}
+    # save_csv()
+    matches = pd.read_csv("matches/matches.csv")
+    x_data, y_data, x_test, y_test = prepare_data(matches)
+    clfa = XGBClassifier()
+    train_predict(clfa, x_data, y_data, x_test, y_test)
+    save_clf(clfa)
+
+def mlp():
+    params = {
+    'eta': 0.02, 
+    'max_depth': 7,
+    'objective': 'binary:logistic',
+    'eval_metric': 'logloss',
+    'seed': 100,
+    'silent': True
+}
+    # save_csv()
+    matches = pd.read_csv("matches/matches.csv")
+    x_data, y_data, x_test, y_test = prepare_data(matches)
+    clfa = MLPClassifier(solver = 'adam', alpha = 0.00005, hidden_layer_sizes=(200, 100, 50, 25, 10), random_state=1, warm_start=True)
+    train_predict(clfa, x_data, y_data, x_test, y_test)
+    save_clf(clfa)
+    
+    
+def features_check():
+    with open("matches/matches_ap.txt","r") as f:
+        matches = eval(f.readline())
+    for match in matches:
+        if 't1gpm' in match.keys():
+            continue
+        print(match)
+        t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td = create_features(list(map(int, match['radiant_team'].split(',') + match['dire_team'].split(','))))
+        match['t1gpm'] = t1gpm
+        match['t1xpm'] = t1xpm
+        match['t1kpm'] = t1kpm
+        match['t1lhpm'] = t1lhpm
+        match['t1hdpm'] = t1hdpm
+        match['t1hhpm'] = t1hhpm
+        match['t1td'] = t1td
+        
+        match['t2gpm'] = t2gpm
+        match['t2xpm'] = t2xpm
+        match['t2kpm'] = t2kpm
+        match['t2lhpm'] = t2lhpm
+        match['t2hdpm'] = t2hdpm
+        match['t2hhpm'] = t2hhpm
+        match['t2td'] = t2td
+    
+    with open("matches/matches_ap.txt","w") as f:
+        f.write(str(matches))   
 try:
     get_matches()
-    # create_features([1, 73, 10, 74, 11, 5, 87, 86, 84, 83])
+    # mlp()
+    # xgb()
     
 
     

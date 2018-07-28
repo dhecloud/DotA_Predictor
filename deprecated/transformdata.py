@@ -10,7 +10,7 @@ def run():
     print(rows)
     radcols = ["player1", "player2", "player3", "player4", "player5"]
     direcols = ["player6","player7", "player8","player9", "player10"]
-    heroes = set(list(data.player1.unique())+list(data.player2.unique()) +list(data.player3.unique()) + list(data.player4.unique()) + list(data.player5.unique()) )
+    heroes = set(list(data.player1.unique())+list(data.player2.unique()) +list(data.player3.unique()) + list(data.player4.unique()) + list(data.player5.unique()))
     print("Number of Heroes: "+ str(len(heroes)))
     col = ["rad_win"]
     for name in heroes:
