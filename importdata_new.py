@@ -12,6 +12,7 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import f1_score
 from sklearn.cross_validation import train_test_split
 from xgboost import XGBClassifier
+import sys
 
 
 
@@ -114,16 +115,17 @@ def get_matches():
             f.write(str(matches))
         time.sleep(2)
         get_ap_matches()
+        features_check()
         create_one_hot_hero_features()
         print("sleeping...")
-        time.sleep(800)
+        time.sleep(60)
 
 def get_ap_matches():
     api_instance = od_python.MatchesApi()
     with open("matches/matches.txt","r") as f:
         matches = eval(f.readline())
     with open("matches/matches_ap.txt","r") as f:
-             matches_all_pick = eval(f.readline())
+        matches_all_pick = eval(f.readline())
     ids = [x['match_id'] for x in matches_all_pick]
     for match in matches:
         if match['match_id'] in ids:
@@ -145,7 +147,7 @@ def get_ap_matches():
                 match['patch'] = api_response.patch
                 match['region'] = api_response.region
                 match['skill'] = api_response.skill
-                t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td = create_features(list(map(int, match['radiant_team'].split(',') + match['dire_team'].split(','))))
+                t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td, t1_complexity, t2_complexity= create_features(list(map(int, match['radiant_team'].split(',') + match['dire_team'].split(','))))
                 match['t1gpm'] = t1gpm
                 match['t1xpm'] = t1xpm
                 match['t1kpm'] = t1kpm
@@ -153,6 +155,7 @@ def get_ap_matches():
                 match['t1hdpm'] = t1hdpm
                 match['t1hhpm'] = t1hhpm
                 match['t1td'] = t1td
+                match['t1_complexity'] = t1_complexity
                 
                 match['t2gpm'] = t2gpm
                 match['t2xpm'] = t2xpm
@@ -161,6 +164,7 @@ def get_ap_matches():
                 match['t2hdpm'] = t2hdpm
                 match['t2hhpm'] = t2hhpm
                 match['t2td'] = t2td
+                match['t2_complexity'] = t2_complexity
                 
                 # print(match['throw'])
                 # print(type(match['throw']))
@@ -171,7 +175,7 @@ def get_ap_matches():
                     f.write(str(matches_all_pick))
         time.sleep(2)
     with open("matches/matches_ap.txt","w") as f:
-        f.write(str(matches))
+        f.write(str(matches_all_pick))
 
 def input_heroes_complexity():
     new_stats = []
@@ -269,6 +273,7 @@ def create_features(heroes):
     t1hdpm = (p1['hdpm']+p2['hdpm']+p3['hdpm']+p4['hdpm']+p5['hdpm'])/(5*hdpm)
     t1hhpm = (p1['hhpm']+p2['hhpm']+p3['hhpm']+p4['hhpm']+p5['hhpm'])/(5*hhpm)
     t1td = (p1['td']+p2['td']+p3['td']+p4['td']+p5['td'])/(5*td)
+    t1_complexity = (p1['complexity']+p2['complexity']+p3['complexity']+p4['complexity']+p5['complexity'])
     t1_stats = [t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td]
     
     t2gpm = (p6['gpm']+p7['gpm']+p8['gpm']+p9['gpm']+p10['gpm'])/(5*gpm)
@@ -278,9 +283,10 @@ def create_features(heroes):
     t2hdpm = (p6['hdpm']+p7['hdpm']+p8['hdpm']+p9['hdpm']+p10['hdpm'])/(5*hdpm)
     t2hhpm = (p6['hhpm']+p7['hhpm']+p8['hhpm']+p9['hhpm']+p10['hhpm'])/(5*hhpm)
     t2td = (p6['td']+p7['td']+p8['td']+p9['td']+p10['td'])/(5*td)
+    t2_complexity = (p6['complexity']+p7['complexity']+p8['complexity']+p9['complexity']+p10['complexity'])
     t2_stats = [t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td]
     
-    return t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td
+    return t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td, t1_complexity, t2_complexity
 
 def save_csv():
     with open("matches/matches_ap.txt","r") as f:
@@ -295,7 +301,6 @@ def prepare_data(data):
     x_data = data.drop(['duration', 'loss', 'match_id', 'match_seq_num', 'patch','radiant_win','region','skill','start_time','throw','radiant_team','dire_team'],1)
     x_data = (x_data-x_data.mean())/x_data.std()
     assert(not x_data.isnull().values.any())
-    x_data = x_data.values
     x_data, x_test, y_data, y_test = train_test_split(x_data, y_data,
                                                     test_size = 500,
                                                     random_state = 2,
@@ -304,14 +309,13 @@ def prepare_data(data):
     
 def train_predict(clf, x_data, y_data, x_test, y_test):
 
-    print("\nTraining a " + clf.__class__.__name__ + "...")
-
+    print("\n~~~ " + clf.__class__.__name__ + " ~~~~")
+    print("=== Train ===")
     train_classifier(clf, x_data, y_data)
     #train
-    print("=== Train ===")
     f1, acc = predict_outcome(clf, x_data, y_data)
     #test
-    print("=== Test ===")
+    print("\n=== Test ===")
     f1, acc = predict_outcome(clf, x_test, y_test)
     
 def train_classifier(clf, x_data, y_data):
@@ -393,7 +397,7 @@ def mlp():
     # save_csv()
     matches = pd.read_csv("matches/matches.csv")
     x_data, y_data, x_test, y_test = prepare_data(matches)
-    clfa = MLPClassifier(solver = 'adam', alpha = 0.00005, hidden_layer_sizes=(200, 100, 50, 25, 10), random_state=1, warm_start=True)
+    clfa = MLPClassifier(solver = 'adam', alpha = 0.00005, hidden_layer_sizes=(250, 125, 60, 30, 10), random_state=1, warm_start=True)
     train_predict(clfa, x_data, y_data, x_test, y_test)
     save_clf(clfa)
     
@@ -402,10 +406,10 @@ def features_check():
     with open("matches/matches_ap.txt","r") as f:
         matches = eval(f.readline())
     for match in matches:
-        if 't1gpm' in match.keys():
+        if 't1_complexity' in match.keys():
             continue
         print(match)
-        t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td = create_features(list(map(int, match['radiant_team'].split(',') + match['dire_team'].split(','))))
+        t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td, t1_complexity, t2_complexity = create_features(list(map(int, match['radiant_team'].split(',') + match['dire_team'].split(','))))
         match['t1gpm'] = t1gpm
         match['t1xpm'] = t1xpm
         match['t1kpm'] = t1kpm
@@ -413,6 +417,7 @@ def features_check():
         match['t1hdpm'] = t1hdpm
         match['t1hhpm'] = t1hhpm
         match['t1td'] = t1td
+        match['t1_complexity'] = t1_complexity
         
         match['t2gpm'] = t2gpm
         match['t2xpm'] = t2xpm
@@ -421,13 +426,17 @@ def features_check():
         match['t2hdpm'] = t2hdpm
         match['t2hhpm'] = t2hhpm
         match['t2td'] = t2td
+        match['t2_complexity'] = t2_complexity
     
     with open("matches/matches_ap.txt","w") as f:
         f.write(str(matches))   
 try:
-    get_matches()
-    # mlp()
-    # xgb()
+    # features_check()
+    if int(sys.argv[1]) == 1:
+        get_matches()
+    else:
+        mlp()
+        xgb()
     
 
     
