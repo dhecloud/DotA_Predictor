@@ -60,7 +60,7 @@ def get_heroes_stats_combined(refresh=False):
     else:
         with open("hero_data/heroes_stats_combined.txt","r") as f:
             heroes_stats_combined = eval(f.readline())
-    
+
     positions = {}
     for i in range(len(heroes_stats_combined)):
         positions[heroes_stats_combined[i]['id']] = i
@@ -118,7 +118,7 @@ def get_matches():
         features_check()
         create_one_hot_hero_features()
         print("sleeping...")
-        time.sleep(60)
+        time.sleep(70)
 
 def get_ap_matches():
     api_instance = od_python.MatchesApi()
@@ -147,7 +147,7 @@ def get_ap_matches():
                 match['patch'] = api_response.patch
                 match['region'] = api_response.region
                 match['skill'] = api_response.skill
-                t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td, t1_complexity, t2_complexity= create_features(list(map(int, match['radiant_team'].split(',') + match['dire_team'].split(','))))
+                t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td, t1_complexity, t2_complexity, t1_escape, t1_initiator, t1_pusher, t1_durable, t1_nuker, t1_carry, t1_disable, t1_jungler, t1_support, t2_escape, t2_initiator, t2_pusher, t2_durable, t2_nuker, t2_carry, t2_disable, t2_jungler, t2_support= create_features(list(map(int, match['radiant_team'].split(',') + match['dire_team'].split(','))))
                 match['t1gpm'] = t1gpm
                 match['t1xpm'] = t1xpm
                 match['t1kpm'] = t1kpm
@@ -156,6 +156,15 @@ def get_ap_matches():
                 match['t1hhpm'] = t1hhpm
                 match['t1td'] = t1td
                 match['t1_complexity'] = t1_complexity
+                match['t1_escape'] = t1_escape
+                match['t1_initiator'] = t1_initiator
+                match['t1_pusher'] = t1_pusher
+                match['t1_durable'] = t1_durable
+                match['t1_nuker'] = t1_nuker
+                match['t1_carry'] = t1_carry
+                match['t1_disable'] = t1_disable
+                match['t1_jungler'] = t1_jungler
+                match['t1_support'] = t1_support
                 
                 match['t2gpm'] = t2gpm
                 match['t2xpm'] = t2xpm
@@ -164,7 +173,16 @@ def get_ap_matches():
                 match['t2hdpm'] = t2hdpm
                 match['t2hhpm'] = t2hhpm
                 match['t2td'] = t2td
-                match['t2_complexity'] = t2_complexity
+                match['t2_complexity'] = t2_complexity                
+                match['t2_escape'] = t2_escape
+                match['t2_initiator'] = t2_initiator
+                match['t2_pusher'] = t2_pusher
+                match['t2_durable'] = t2_durable
+                match['t2_nuker'] = t2_nuker
+                match['t2_carry'] = t2_carry
+                match['t2_disable'] = t2_disable
+                match['t2_jungler'] = t2_jungler
+                match['t2_support'] = t2_support
                 
                 # print(match['throw'])
                 # print(type(match['throw']))
@@ -252,7 +270,12 @@ def create_features(heroes):
         heroes_stats_combined = eval(f.readline())
     with open("hero_data/hero_positions.txt","r") as f:
         positions = eval(f.readline())
-        
+    roles= []
+    # for hero in heroes_stats_combined:
+    #     roles += hero['roles']
+    # roles = list(set(roles))
+    # print(roles)
+    roles = ['Escape', 'Initiator', 'Pusher', 'Durable', 'Nuker', 'Carry', 'Disabler', 'Jungler', 'Support'] 
     p1 = heroes_stats_combined[positions[heroes[0]]]
     p2 = heroes_stats_combined[positions[heroes[1]]]
     p3 = heroes_stats_combined[positions[heroes[2]]]
@@ -274,7 +297,20 @@ def create_features(heroes):
     t1hhpm = (p1['hhpm']+p2['hhpm']+p3['hhpm']+p4['hhpm']+p5['hhpm'])/(5*hhpm)
     t1td = (p1['td']+p2['td']+p3['td']+p4['td']+p5['td'])/(5*td)
     t1_complexity = (p1['complexity']+p2['complexity']+p3['complexity']+p4['complexity']+p5['complexity'])
-    t1_stats = [t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td]
+    t1_roles = [0,0,0,0,0,0,0,0,0]
+    for i in range(len(roles)):
+        for hero in t1:
+            if roles[i] in hero['roles']:
+                t1_roles[i] += 1
+    t1_escape = t1_roles[0]
+    t1_initiator = t1_roles[1]
+    t1_pusher = t1_roles[2]
+    t1_durable = t1_roles[3]
+    t1_nuker = t1_roles[4]
+    t1_carry = t1_roles[5]
+    t1_disable = t1_roles[6]
+    t1_jungler = t1_roles[7]
+    t1_support  = t1_roles[8]
     
     t2gpm = (p6['gpm']+p7['gpm']+p8['gpm']+p9['gpm']+p10['gpm'])/(5*gpm)
     t2xpm = (p6['xpm']+p7['xpm']+p8['xpm']+p9['xpm']+p10['xpm'])/(5*xpm)
@@ -284,9 +320,22 @@ def create_features(heroes):
     t2hhpm = (p6['hhpm']+p7['hhpm']+p8['hhpm']+p9['hhpm']+p10['hhpm'])/(5*hhpm)
     t2td = (p6['td']+p7['td']+p8['td']+p9['td']+p10['td'])/(5*td)
     t2_complexity = (p6['complexity']+p7['complexity']+p8['complexity']+p9['complexity']+p10['complexity'])
-    t2_stats = [t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td]
+    t2_roles = [0,0,0,0,0,0,0,0,0]
+    for i in range(len(roles)):
+        for hero in t2:
+            if roles[i] in hero['roles']:
+                t2_roles[i] += 1
+    t2_escape = t2_roles[0]
+    t2_initiator = t2_roles[1]
+    t2_pusher = t2_roles[2]
+    t2_durable = t2_roles[3]
+    t2_nuker = t2_roles[4]
+    t2_carry = t2_roles[5]
+    t2_disable = t2_roles[6]
+    t2_jungler = t2_roles[7]
+    t2_support  = t2_roles[8]
     
-    return t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td, t1_complexity, t2_complexity
+    return t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td, t1_complexity, t2_complexity, t1_escape, t1_initiator, t1_pusher, t1_durable, t1_nuker, t1_carry, t1_disable, t1_jungler, t1_support, t2_escape, t2_initiator, t2_pusher, t2_durable, t2_nuker, t2_carry, t2_disable, t2_jungler, t2_support
 
 def save_csv():
     with open("matches/matches_ap.txt","r") as f:
@@ -302,7 +351,7 @@ def prepare_data(data):
     x_data = (x_data-x_data.mean())/x_data.std()
     assert(not x_data.isnull().values.any())
     x_data, x_test, y_data, y_test = train_test_split(x_data, y_data,
-                                                    test_size = 500,
+                                                    test_size = int(0.1*x_data.shape[0]),
                                                     random_state = 2,
                                                     stratify = y_data)
     return x_data, y_data, x_test, y_test
@@ -377,7 +426,7 @@ def xgb():
     'eval_metric': 'logloss',
     'seed': 100,
     'silent': True
-}
+    }
     # save_csv()
     matches = pd.read_csv("matches/matches.csv")
     x_data, y_data, x_test, y_test = prepare_data(matches)
@@ -386,18 +435,10 @@ def xgb():
     save_clf(clfa)
 
 def mlp():
-    params = {
-    'eta': 0.02, 
-    'max_depth': 7,
-    'objective': 'binary:logistic',
-    'eval_metric': 'logloss',
-    'seed': 100,
-    'silent': True
-}
     # save_csv()
     matches = pd.read_csv("matches/matches.csv")
     x_data, y_data, x_test, y_test = prepare_data(matches)
-    clfa = MLPClassifier(solver = 'adam', alpha = 0.00005, hidden_layer_sizes=(250, 125, 60, 30, 10), random_state=1, warm_start=True)
+    clfa = MLPClassifier(solver = 'adam', alpha = 0.005, hidden_layer_sizes=(260, 130, 65, 30, 10), random_state=1, warm_start=True)
     train_predict(clfa, x_data, y_data, x_test, y_test)
     save_clf(clfa)
     
@@ -406,10 +447,11 @@ def features_check():
     with open("matches/matches_ap.txt","r") as f:
         matches = eval(f.readline())
     for match in matches:
-        if 't1_complexity' in match.keys():
+        if 't1_escape' in match.keys():
             continue
         print(match)
-        t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td, t1_complexity, t2_complexity = create_features(list(map(int, match['radiant_team'].split(',') + match['dire_team'].split(','))))
+        t1gpm, t1xpm, t1kpm, t1lhpm, t1hdpm, t1hhpm, t1td, t2gpm, t2xpm, t2kpm, t2lhpm, t2hdpm, t2hhpm, t2td, t1_complexity, t2_complexity, t1_escape, t1_initiator, t1_pusher, t1_durable, t1_nuker, t1_carry, t1_disable, t1_jungler, t1_support, t2_escape, t2_initiator, t2_pusher, t2_durable, t2_nuker, t2_carry, t2_disable, t2_jungler, t2_support = create_features(list(map(int, match['radiant_team'].split(',') + match['dire_team'].split(','))))
+        roles = ['Escape', 'Initiator', 'Pusher', 'Durable', 'Nuker', 'Carry', 'Disabler', 'Jungler', 'Support']
         match['t1gpm'] = t1gpm
         match['t1xpm'] = t1xpm
         match['t1kpm'] = t1kpm
@@ -418,6 +460,15 @@ def features_check():
         match['t1hhpm'] = t1hhpm
         match['t1td'] = t1td
         match['t1_complexity'] = t1_complexity
+        match['t1_escape'] = t1_escape
+        match['t1_initiator'] = t1_initiator
+        match['t1_pusher'] = t1_pusher
+        match['t1_durable'] = t1_durable
+        match['t1_nuker'] = t1_nuker
+        match['t1_carry'] = t1_carry
+        match['t1_disable'] = t1_disable
+        match['t1_jungler'] = t1_jungler
+        match['t1_support'] = t1_support
         
         match['t2gpm'] = t2gpm
         match['t2xpm'] = t2xpm
@@ -426,12 +477,22 @@ def features_check():
         match['t2hdpm'] = t2hdpm
         match['t2hhpm'] = t2hhpm
         match['t2td'] = t2td
-        match['t2_complexity'] = t2_complexity
+        match['t2_complexity'] = t2_complexity                
+        match['t2_escape'] = t2_escape
+        match['t2_initiator'] = t2_initiator
+        match['t2_pusher'] = t2_pusher
+        match['t2_durable'] = t2_durable
+        match['t2_nuker'] = t2_nuker
+        match['t2_carry'] = t2_carry
+        match['t2_disable'] = t2_disable
+        match['t2_jungler'] = t2_jungler
+        match['t2_support'] = t2_support
     
     with open("matches/matches_ap.txt","w") as f:
         f.write(str(matches))   
 try:
     # features_check()
+    # create_features([1,2,3,4,5,6,7,8,9,10])
     if int(sys.argv[1]) == 1:
         get_matches()
     else:
