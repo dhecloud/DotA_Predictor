@@ -2,6 +2,7 @@ def warn(*args, **kwargs):
     pass
 import warnings
 warnings.warn = warn
+warnings.filterwarnings("ignore")
 
 import pickle
 import time
@@ -370,13 +371,13 @@ def save_csv():
         matches = eval(f.readline())
         
     matches = pd.DataFrame.from_dict(matches)
-    matches.to_csv("matches/matches.csv")
+    matches.to_csv("matches/matches.csv", index=False)
 
 def prepare_data(data):
     y_data = data['radiant_win']
     y_data = y_data.values
-    x_data = data.drop(['duration', 'loss', 'match_id', 'match_seq_num', 'patch','radiant_win','region','skill','start_time','throw','radiant_team','dire_team'],1)
-    print(x_data.columns.values)
+    x_data = data.drop(['Unnamed: 0','duration', 'loss', 'match_id', 'match_seq_num', 'patch','radiant_win','region','skill','start_time','throw','radiant_team','dire_team'],1)
+    # print(x_data.columns.values)
     x_data = (x_data-x_data.mean())/x_data.std()
     assert(not x_data.isnull().values.any())
     x_data, x_test, y_data, y_test = train_test_split(x_data, y_data,
@@ -457,7 +458,7 @@ def xgb():
     'silent': True
     }
     # save_csv()
-    matches = pd.read_csv("matches/matches.csv")
+    matches = pd.read_csv("matches/matches.csv", index_col = False)
     x_data, y_data, x_test, y_test = prepare_data(matches)
     clfa = XGBClassifier()
     train_predict(clfa, x_data, y_data, x_test, y_test)
@@ -465,9 +466,10 @@ def xgb():
 
 def mlp():
     # save_csv()
-    matches = pd.read_csv("matches/matches.csv")
+    matches = pd.read_csv("matches/matches.csv", index_col = False)
     x_data, y_data, x_test, y_test = prepare_data(matches)
-    clfa = MLPClassifier(solver = 'adam', alpha = 0.005, hidden_layer_sizes=(260, 130, 65, 30, 10), random_state=1, warm_start=True)
+    print(x_data.shape)
+    clfa = MLPClassifier(solver = 'sgd', hidden_layer_sizes=(274, 135, 65, 30, 10), random_state=1, warm_start=True)
     train_predict(clfa, x_data, y_data, x_test, y_test)
     save_clf(clfa)
     
@@ -531,6 +533,7 @@ def features_check():
     with open("matches/matches_ap.txt","w") as f:
         f.write(str(matches))   
 try:
+    
     # save_csv()
     # features_check()
     # create_features([1,2,3,4,5,6,7,8,9,10])
