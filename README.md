@@ -1,6 +1,6 @@
 # DotA_Predictor
 
-#### this repo is still a work in progress
+#### this repo is not a work in progress
 
 ## Overview
 DotA2 is a MOBA and has been one of the most played games on Steam, with over a million concurrent players at its peak. Its competitive scene is lively and boisterous, and players with the compedium of the season can often bet with virtual currency on the outcome of the game.
